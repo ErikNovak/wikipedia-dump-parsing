@@ -1,22 +1,25 @@
 {
-  "name": "wikipedia-concept-mapping",
+  "name": "wikipedia-dump-parsing",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postgres:create": "cd src/load && node -e 'require(`./create-postgres-database`).createDatabase().catch(console.log);'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ErikNovak/wikipedia-concept-mapping.git"
+    "url": "git+https://github.com/ErikNovak/wikipedia-dump-parsing.git"
   },
   "author": "Erik Novak",
   "license": "SEE LICENSE IN LICENSE",
   "bugs": {
-    "url": "https://github.com/ErikNovak/wikipedia-concept-mapping/issues"
+    "url": "https://github.com/ErikNovak/wikipedia-dump-parsing/issues"
   },
-  "homepage": "https://github.com/ErikNovak/wikipedia-concept-mapping#readme",
+  "homepage": "https://github.com/ErikNovak/wikipedia-dump-parsing#readme",
   "dependencies": {
+    "dotenv": "^8.2.0",
+    "pg": "^7.18.2",
     "wtf_wikipedia": "^7.8.1",
     "xml2js": "^0.4.23"
   }

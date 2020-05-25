@@ -105,3 +105,10 @@ dist
 
 /data
 /.vscode
+
+# ignore the raw wikipedia pages and entities
+raw/**/*.xml
+raw/**/*.xml.bz2
+raw/**/*.nt
+raw/**/*.nt.gz
+raw/**/*.nt.bz2
