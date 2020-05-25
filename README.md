@@ -41,8 +41,8 @@ npm install
 
 3. **Download Wikipedia Dump.** To do this, follow the instructions:
 
-    - Downloading wikipedia entities [README](./raw/README.dm).
-    - Downloading wikipedia pages [README](./raw/wiki/README.dm).
+    - Downloading wikipedia entities [README](./raw/README.md).
+    - Downloading wikipedia pages [README](./raw/wiki/README.md).
 
 ## Processing
 
