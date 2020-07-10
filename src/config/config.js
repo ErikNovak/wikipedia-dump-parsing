@@ -29,7 +29,5 @@ module.exports = {
         entities_file_path: process.env.WIKIPEDIA_ENTITIES_FILE_PATH,
         pages_folder_path: process.env.WIKIPEDIA_PAGES_FOLDER_PATH
     }
-
-
 };
 

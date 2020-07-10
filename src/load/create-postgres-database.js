@@ -253,6 +253,14 @@ const databaseUpdates = [{
         ALTER COLUMN page_id SET NOT NULL;
 
     `
+}, {
+    version: 3,
+    update: `
+        ALTER TABLE ${schema}.pages
+        ADD COLUMN concepts jsonb,
+        ADD COLUMN embeddings jsonb;
+
+    `
 }];
 
 // get the requested database version
@@ -380,7 +388,10 @@ async function updateTables () {
             if (_vCurrent < _version && _version <= _vGoal) {
                 try {
                     if (_sql !== '') {
+                        console.log("Executing command:");
+                        console.log(_sql);
                         await pg.execute(_sql, []);
+                        console.log("Execution complete");
                     }
                     await  updateDatabaseVersion(_vCurrent);
                     _vCurrent++;
@@ -423,6 +434,7 @@ async function updateTables () {
         }
         return null;
     } catch (error) {
+        console.log(error);
         return error;
     }
 } // updateTables()

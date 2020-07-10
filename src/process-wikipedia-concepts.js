@@ -35,6 +35,61 @@ class StoreWikiConcept extends Transform {
     }
 
     /**
+     * Stores the wikipedia page if it is not already present in the database.
+     * @param {Object} wiki - The wikipedia page.
+     */
+    async storeWikipediaEntity(entity, wikiID) {
+        try {
+            // add new entity to record
+            if (!(await pg.select({ concept_id: entity.concept_id }, "entities")).length) {
+                // insert non-existing entity
+                await pg.insert(entity, "entities");
+            }
+
+            /////////////////////////////////////////////////
+            // establish link between entity and page
+            /////////////////////////////////////////////////
+
+            const linking = await Promise.all([
+                pg.select({ concept_id: entity.concept_id }, "entities"),
+                pg.select({ wiki_id: wikiID }, "pages")
+            ]);
+            // if both the entity and page are present in the database
+            if (linking[0].length && linking[1].length) {
+                const entityID = linking[0][0].id;
+                const pageID = linking[1][0].id;
+                // create the link object
+                const link = {
+                    entity_id: entityID,
+                    page_id: pageID,
+                    concept_id: entity.concept_id,
+                    wiki_id: wikiID
+                };
+
+                if (!(await pg.select({ entity_id: link.entity_id, page_id: link.page_id }, "entities_pages")).length) {
+                    // insert the linking
+                    await pg.insert(link, "entities_pages");
+                }
+            }
+            // log the successful storage
+            this.successCount++;
+            if (this.successCount % 20000 === 0) {
+                const date = (new Date()).toISOString();
+                console.log(`[${date}] Processing file: ${this.file} ${this.successCount}`);
+            }
+        } catch (error) {
+            this.failureCount++;
+            if (this.failureCount % 20000 === 0) {
+                const date = (new Date()).toISOString();
+                console.log(`[${date}] Failure count: ${this.failureCount}`);
+            }
+            console.log("Error:", error.message.split("\n")[0]);
+        }
+    }
+
+
+
+    /**
      * @description Processes the XML file in chunks.
      * @param {String} chunk - The XML file chunk.
      * @param {String} encoding - The encoding of the file.
@@ -55,6 +110,7 @@ class StoreWikiConcept extends Transform {
 
         if (!rows) { return cb(); }
 
+        let entityStoring = [];
         for (let row of rows) {
             try {
                 const connection = row.match(this.regex);
@@ -78,47 +134,22 @@ class StoreWikiConcept extends Transform {
                     concept_id: conceptID,
                     concept_url: conceptURL
                 };
-                // add new entity to record
-                if (!(await pg.select({ concept_id: conceptID }, "entities")).length) {
-                    // insert non-existing entity
-                    await pg.insert(entity, "entities");
-                }
-
-                /////////////////////////////////////////////////
-                // establish link between entity and page
-                /////////////////////////////////////////////////
-
-                const linking = await Promise.all([
-                    pg.select({ concept_id: conceptID }, "entities"),
-                    pg.select({ wiki_id: wikiID }, "pages")
-                ]);
-                // if both the entity and page are present in the database
-                if (linking[0].length && linking[1].length) {
-                    const entityID = linking[0][0].id;
-                    const pageID = linking[1][0].id;
-                    // create the link object
-                    const link = {
-                        entity_id: entityID,
-                        page_id: pageID,
-                        concept_id: conceptID,
-                        wiki_id: wikiID
-                    };
-                    try {
-                        await pg.insert(link, "entities_pages");
-                    } catch (error) {
-                        console.log(error);
-                    }
-                }
-                // log the successful storage
-                this.successCount++;
-                if (this.successCount % 10000 === 0) {
-                    console.log("Processing file:", this.file, this.successCount);
-                }
+                // push the storing process
+                entityStoring.push(this.storeWikipediaEntity(entity, wikiID));
             } catch (error) {
                 this.failureCount++;
-                console.log("Error:", error.message.split("\n")[0]);
+                if (this.failureCount % 20000 === 0) {
+                    const date = (new Date()).toISOString();
+                    console.log(`[${date}] [${wiki.lang}] Failure count: ${this.failureCount}`);
+                }
+                //console.log("Error:", error.message.split("\n")[0]);
             }
         }
+        if (entityStoring.length > 0) {
+            // store the wikipedia pages
+            await Promise.all(entityStoring);
+        }
+        // indicate to go to the next step
         return cb();
     }
 }

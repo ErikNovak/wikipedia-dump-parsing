@@ -42,6 +42,36 @@ class StoreWikiPage extends Transform {
         console.log(`StoreWikiPage [${file}][${language}] initialized`);
     }
 
+
+    /**
+     * Stores the wikipedia page if it is not already present in the database.
+     * @param {Object} wiki - The wikipedia page.
+     */
+    async storeWikipediaPage(wiki) {
+        try {
+            // add new entity to record
+            if (!(await pg.select({ wiki_id: wiki.wiki_id }, "pages")).length) {
+                // insert the wikipedia object into the database
+                await pg.insert(wiki, "pages");
+            }
+            // log the successful storage
+            this.successCount++;
+            if (this.successCount % 20000 === 0) {
+                const date = (new Date()).toISOString();
+                console.log(`[${date}] [${wiki.lang}] Processing file: ${this.successCount}`);
+            }
+        } catch (error) {
+            this.failureCount++;
+            if (this.failureCount % 20000 === 0) {
+                const date = (new Date()).toISOString();
+                console.log(`[${date}] [${wiki.lang}] Failure count: ${this.failureCount}`);
+            }
+            console.log(`[${wiki.lang}] Error: ${error.message.split("\n")[0]}`);
+        }
+        return;
+    }
+
+
     /**
      * @description Processes the XML file in chunks.
      * @param {String} chunk - The XML file chunk.
@@ -71,6 +101,7 @@ class StoreWikiPage extends Transform {
             .filter((page) => page !== "")
             .map((page) => `${page}</page>`);
 
+        let pageStoring = [];
         for (let page of pages) {
             try {
                 const {
@@ -99,22 +130,21 @@ class StoreWikiPage extends Transform {
                     refs: wikiPage.references,
                     //structure: wikiPage.sections
                 };
-
-                // add new entity to record
-                if (!(await pg.select({ wiki_id: wikiPage.id }, "pages")).length) {
-                    // insert the wikipedia object into the database
-                    await pg.insert(wiki, "pages");
-                }
-                // log the successful storage
-                this.successCount++;
-                if (this.successCount % 100000 === 0) {
-                    console.log("Processing file:", this.file, this.successCount);
-                }
+                // push the storing process
+                pageStoring.push(this.storeWikipediaPage(wiki));
             } catch (error) {
                 this.failureCount++;
-                console.log("Error:", error.message.split("\n")[0]);
+                if (this.failureCount % 20000 === 0) {
+                    console.log(`[${wiki.lang}] Failure count: ${this.failureCount}`);
+                }
+                // console.log(`[${this.language}] Error: ${error.message.split("\n")[0]}`);
             }
         }
+        if (pageStoring.length > 0) {
+            // store the wikipedia pages
+            await Promise.all(pageStoring);
+        }
+        // indicate to go to the next step
         return cb();
     }
 }
@@ -160,7 +190,7 @@ async function processWikipediaPages() {
         .pipe(storeWikiPage)
         .on('end', (error) => {
             if (error) {
-                console.log("Something went wrong:");
+                console.log(`[${storeWikiPage.language}] Something went wrong:`);
                 console.log(error);
             }
             console.log("Read stream ENDED");
